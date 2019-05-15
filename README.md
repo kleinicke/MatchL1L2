@@ -1,6 +1,6 @@
 # Download and Match L1-L2 OCO-2 Data
 
-This Code was used to Match L1 and L2 Data, provided by Nasa. It should be fully functional, when you create the required account and store the NASA password as described by NASA.  
+This Code was used to Match L1 and L2 Data, provided by Nasa. It should be fully functional, when you create the required account and store the NASA password as described for the usage of wget: https://disc.gsfc.nasa.gov/data-access#windows_wget.
 The download paths might be outdated by now. You can easily get new ones from the GES DISC page https://disc.gsfc.nasa.gov/datasets?project=OCO  
 For my project I used the L2 Lite dataset: OCO2_L2_Lite_FP: OCO-2 Level 2 bias-corrected XCO2 and other select fields from the full-physics retrieval aggregated as daily files, Retrospective processing V9r  
 And the L1b Dataset: OCO2_L1B_Science: OCO-2 Level 1B calibrated, geolocated science spectra, Retrospective Processing V8r  
