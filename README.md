@@ -19,3 +19,5 @@ The file `process.py` is responsible for matching the two File Types. The L2 dat
 At the end I run `postprocess.py` to further sort out some problematic data.  
 
 The code was used to create a dataset to learn the retrieval process with an Invertible Neural Network.
+
+For questions and remarks, feel free to contact me at kleinicke@stud.uni-heidelberg.de
