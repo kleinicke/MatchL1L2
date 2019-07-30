@@ -1,13 +1,16 @@
 #!/bin/sh
+
+#function to downlaod urls.
+#When download fails, retries 30 seconds later.
 fetch_urls < "$filename"
 fetch_urls() {
 	iteration=0
-	#while read -r line; do
 	DONE=false
 	until $DONE; do
 		read line || DONE=true
 		# you code
 		echo "$iteration is loading $line"	
+		#the commented line can be used to filter for certain filenames
 		#if [[ $line == *"L1bScND"* ]]; then
         line=${line%$'\r'}
         if [[ $line ]]; then
@@ -15,34 +18,23 @@ fetch_urls() {
                 printf '.'
                 sleep 30
             done
-                    #curl -b ~/.urs_cookies -c ~/.urs_cookies -L -n -f -Og $line
         fi
-		#fi
 		((iteration++))
 	done;
 }
-#fetch_urls() {
-#        while read -r line; do
-#                curl -b ~/.urs_cookies -c ~/.urs_cookies -L -n -f -Og $line && echo || exit_with_error "Command failed with error. Please retrieve the data manually."
-#        done;
-#}
-filename="$1"
-#echo $filename
-#cat filename | while read LINE; do
-#    echo $LINE
-#done
+
+#first passed argument is the textfile with the names of the files to download
+#filename="$1"
+#or shorter just use this file
+filename = "L2list.txt"
+
+#iterates through the lines of the file and calls above function for each line.
 DONE=false
 iteration=0
 until $DONE; do
 	read line || DONE=true
-#while read -r line; do
     name="$line"
     echo "$iteration: Name read from file - $name"
     ((iteration++))
 done < "$filename"
 fetch_urls < "$filename"
-#'EDSCEOF'
-# Insert URLS here
-#https://oco2.gesdisc.eosdis.nasa.gov/data/OCO2_DATA/OCO2_L2_Lite_FP.9r/2018/oco2_LtCO2_181030_B9003r_181130204140s.nc4
-#https://oco2.gesdisc.eosdis.nasa.gov/data/OCO2_DATA/OCO2_L2_Lite_FP.9r/2018/oco2_LtCO2_181031_B9003r_181130204353s.nc4
-#EDSCEOF
