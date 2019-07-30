@@ -4,82 +4,94 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import glob
+""" File to extract information from L1b and L2 files.
+
+    Structure:
+    load_and_match is called for every month that is to analyze.
+    It calls read_L2 and L1 (which call get_L2 and L1 for certain files).
+    With getL2_ids the id's get extracted.
+    matchL1L2 matches the files and saveElems saves them
+
+Returns:
+    Saves files in folder: "npy".
+    To see the position of what parameter see the namedict at the end of this file
+
+"""
 
 def get_L1(file_pathL1):
-    #todo: get wavelenth once
+    """File to extract required parameter from the L1 file
+    
+    Arguments:
+        file_pathL1 {Path} -- The path to the file. Would also accept a String
+    
+    Returns:
+        [np.array] -- array that holds all downloaded data
+    """
+
+
     L1 = netCDF4.Dataset(file_pathL1)
-    L1_id = L1["SoundingGeometry/sounding_id"][...]#.compressed()#.flatten()
 
-    #sza = L1["SoundingGeometry/sounding_solar_zenith"][...]#.compressed()#.flatten()
-    flag = L1["SoundingGeometry/sounding_qual_flag"][...]#.compressed()#.flatten()#should be 0
+    #Extracts all infromation
+    #[...] turns object into masked numpy array
+    L1_id = L1["SoundingGeometry/sounding_id"][...]
 
+    #sza = L1["SoundingGeometry/sounding_solar_zenith"][...]
+    flag = L1["SoundingGeometry/sounding_qual_flag"][...]
 
-    sco2 = L1["SoundingMeasurements/radiance_strong_co2"][...]#.compressed()#.flatten()
-    wco2 = L1["SoundingMeasurements/radiance_weak_co2"][...]#.compressed()#.flatten()
-    o2 = L1["SoundingMeasurements/radiance_o2"][...]#.compressed()#.flatten()
+    sco2 = L1["SoundingMeasurements/radiance_strong_co2"][...]
+    wco2 = L1["SoundingMeasurements/radiance_weak_co2"][...]
+    o2 = L1["SoundingMeasurements/radiance_o2"][...]
 
     #snr_o2_l1b = L1["SoundingMeasurements/snr_o2_l1b"][...]
     #snr_strong_co2_l1b = L1["SoundingMeasurements/snr_strong_co2_l1b"][...]
     #snr_weak_o2_l1b = L1["SoundingMeasurements/snr_weak_o2_l1b"][...]
 
-    first_sound = L1["Metadata/FirstSoundingId"][...]#.compressed()#.flatten()
-    last_sound = L1["Metadata/LastSoundingId"][...]#.compressed()#.flatten()
-    print(f"sounding range L1: ({first_sound[0]},{last_sound[0]}) with {L1_id.size} elements")# or ({L1_id[0][0]},{L1_id[-1][-1]})
+    first_sound = L1["Metadata/FirstSoundingId"][...]
+    last_sound = L1["Metadata/LastSoundingId"][...]
+    print(f"sounding range L1: ({first_sound[0]},{last_sound[0]}) with {L1_id.size} elements")
     
-    elems = [L1_id,sco2,wco2,o2]#sza
-    #[print(elem.shape) for elem in elems]
-    #print("flag",flag.shape)
+    #elements to return
+    elems = [L1_id,sco2,wco2,o2]
+    #unmasks numpy arrays
     elems = [np.ma.filled(elem,np.nan) for elem in elems]
-    #print("Hi")
-    ###print(f"spectrum consists of {len(elems)} elements with shapes:")
+    
+    #reshaps n-d elements into 2d
     for i,elem in enumerate(elems):
-        #print(i, type(elem))
-        ##print(i, np.shape(elem))
         new_elem = elem.reshape(-1, *elem.shape[2:])
-        #print(np.shape(new_elem))
         elems[i] = new_elem
 
-        #only for masked arrays
-        #print(elem.count())
-        #print(elem.compressed())
-        #elem_mask = elem.mask()
-        #try:
-        #    print("sum of mask",np.sum(np.ma.getmaskarray(elem)))
-        #except:
-        #    print(f"{i} is not a masked array")
 
+    #gets flag to mask out faulty elements
     L1_id = elems[0]
-    #sza = elem
-    ###flag = elems[2] == 0#np.array(elems[2], dtype=bool)
-    #print(flag.shape)
     flag = flag.reshape(-1, *flag.shape[2:])
-    #print(flag.shape)
     flag = np.ma.filled(flag,np.nan)
-    #print(flag)
-    ##print(type(L1_id))
-    #print(np.sum(L1_id))
-    ##print(L1_id)
-    ##print(flag)
-    ##print("s id",np.shape(L1_id))
-    ##print("s flag",np.shape(flag))
-    #print(flag.size)
-    #print(L1_id.size)
-    #print(flag.max())
-    #print(flag.min())
-    flag =np.logical_not(np.asarray(flag,dtype=bool)) # 0 is true, all other codes are false
-    #print(np.sum(flag))
+
+    #code 0 is true, all other codes are false
+    flag =np.logical_not(np.asarray(flag,dtype=bool)) 
     print("flagged L1 shape",np.shape(L1_id[flag]))
-    #print(f"sounding after flag {L1_id[flag].size} elements")
+    
+    #apply filter and turn the masked numpy array into a normal numpy array.
     elems = [np.ma.filled(elem[flag],np.nan) for elem in elems]
 
+    #Save the wavelenth of the file once
     #wavelenth = np.ma.filled(L1[f"InstrumentHeader/dispersion_coef_samp"][...],np.nan)
     #wave_path = Path(__file__).parent.joinpath("tmp/wavelenth.npy")
     #np.save(wave_path, wavelenth)
 
-    return elems#L1_id,sza,flag,sco2,wco2,o2
+    return elems
 
 def get_L2(file_pathL2):
+    """File to extract required parameter from L2 file
+    
+    Arguments:
+        file_pathL2 {[Path]} -- The path to the file. Would also accept a String
+    
+    Returns:
+        [np.array] -- array that holds all downloaded data
+    """
     L2 = netCDF4.Dataset(file_pathL2)
+    #Extracts all infromation
+    #[...] turns object into masked numpy array
     L2_id = L2['sounding_id'][...]
     #retrived
     xco2 = L2.variables['xco2'][...]
@@ -138,10 +150,11 @@ def get_L2(file_pathL2):
     masks = np.logical_not(flag)
     lands = np.greater_equal(land,90)
     temp_flag = np.greater_equal(t700,0)
-    wind_flag = np.greater_equal(windspeed,0) 
+    #wind_flag = np.greater_equal(windspeed,0) 
     land_mask = np.logical_and(masks,lands)
     land_mask = np.logical_and(land_mask,temp_flag)
-    #land_mask = np.logical_and(land_mask,wind_flag) #wind flag is called to ofter. ignore wind
+    #wind flag is called to often. ignore wind
+    #land_mask = np.logical_and(land_mask,wind_flag)
 
     print(f"sounding range L2: ({L2_id[0]},{L2_id[-1]}) with {L2_id.size} elements ")
 
@@ -155,16 +168,6 @@ def get_L2(file_pathL2):
     elems2 = [np.ma.filled(elem[land_mask],np.nan) for elem in elems2]
 
     return elems+elems2, source_files
-
-
-#Writes filelists
-
-#get files with wget --load-cookies ~/.urs_cookies --save-cookies ~/.urs_cookies --auth-no-challenge=on --keep-session-cookies --content-disposition -i <url.txt>
-#filePath_L1 = Path(f"data/generate/download/L1/subset_OCO2_L1_Science_V8r_20190226_145859.txt")
-#filePath_L2 = Path(f"data/generate/download/L2_9000/subset_OCO2_L2_Lite_FP_V9r_20190226_173114.txt")
-#filePath_L1 = Path(__file__).parent.joinpath(f"process/L1/subset_OCO2_L1_Science_V8r_20190307_103950.txt")
-#filePath_L2 = Path(__file__).parent.joinpath(f"L2_8100/OCO2LtCO2v8-155195260053.txt")
-filePath_L2 = Path(__file__).parent.joinpath(f"L2_9000/subset_OCO2_L2_Lite_FP_V9r_20190308_141525.txt")
 
 
 def getLoadingList(files_list_path):
@@ -196,17 +199,7 @@ def getLoadingList(files_list_path):
 
 
 
-#print(np.shape(files_L1))
-#print(np.shape(files_L2))
-
-#print("\n L1 and L2 file lists")
-#print(fileList_L1[:10])
-#print(fileList_L2[:10])
-
-
-
-
-def read_L2(fileList_L2):
+def read_L2(fileList_L2, L2Folder = Path(__file__).parent.joinpath(f"L2_9000/")):
     """Reads all L2 files in list. Calls getL2 for each entry
     
     Arguments:
@@ -223,7 +216,7 @@ def read_L2(fileList_L2):
     #print(f"t0: {time.perf_counter() - t:.2f}s")
     for i,L2 in enumerate(fileList_L2):
         print(i,"L2 ",L2)
-        L2Path = Path(__file__).parent.joinpath(f"L2_9000/{L2}")
+        L2Path = L2Folder.joinpath(f"{L2}")
         #download(L2,writePath)
         #if i>0:
         L2s, sources = get_L2(L2Path)
@@ -247,55 +240,6 @@ def getL2_ids(L2_array_list):
     print(L2_ids)
     #np.save((Path(__file__).parent.joinpath(f"tmp/L2_id.npy")),L2_ids)
     return L2_ids
-
-
-def matchL1L2(L1_ids,L2_ids):
-    L1_ids = L1_ids.flatten()
-    mutal_ids = np.intersect1d(L1_ids,L2_ids) #for filtering all matches
-    print("mutal: ",np.shape(mutal_ids),"single: L1 ",np.shape(L1_ids), ", L2 ", np.shape(L2_ids))
-    pos = np.where(L1_ids == L2_ids[0])
-    #print (pos)
-    #np.set_printoptions(suppress=True)
-    #print(L1_ids[pos[0][0]:][:100])
-    #print(mutal_ids.astype(int)[:100])
-    #print(L2_ids[:100])
-
-    mask_equal_L1 = np.isin(L1_ids,L2_ids)
-    mask_equal_L2 = np.isin(L2_ids,L1_ids)
-    #print(L1_ids[mask_equal_L1][:100])
-    #print(np.shape(mask_equal_L1),np.shape(mask_equal_L2),np.shape(L1_ids),np.shape(L2_ids))
-    #print(np.sum(np.abs(L1_ids[mask_equal_L1]-L2_ids)))
-    print("0 check: ",np.sum(np.abs(L1_ids[mask_equal_L1]-L2_ids[mask_equal_L2])))
-    print("unused L2 values: ",np.sum(mask_equal_L2 == False))
-    assert np.sum(np.abs(L1_ids[mask_equal_L1]-L2_ids[mask_equal_L2]))<0.1
-    if np.abs(np.sum(mask_equal_L2 == False))>0.1:
-        print("\n\n WARNING! Not all L2 values were matched")
-    return mask_equal_L1, mask_equal_L2
-
-def saveElems(array_list,mask_equal, name = "L1"):
-    #sort out L1 elems and get big array
-    elems = np.array([])
-    elem_list = list(zip(*array_list))
-    for i in range(len(array_list[0])):
-        elem = elem_list[i]
-        #for e in L1_elem:
-        #        print(i,np.shape(e))
-        elem = np.concatenate(elem,axis=0)
-        #print("1 elem ",np.shape(L1_elem))
-        elem=elem[mask_equal]
-        #print("1 elem masked",np.shape(L1_elem))
-        #print("all elems ",np.shape(L1_elems))
-        #print("elem1",np.shape(elem))
-        if elem.ndim < 2:
-                elem = elem [:,None]
-        #print("elem2",np.shape(elem))
-        elems= np.concatenate([elems, elem],axis=1) if elems.size else elem #np.vstack
-        #L1_elems.append()
-
-    elemsPath = f"npy/{name}_elems.npy"
-    print(f"{name}_elems shape {np.shape(elems)},saved to {elemsPath}")
-    np.save(Path(__file__).parent.joinpath(elemsPath),elems)
-    return elems
 
 def read_L1(files_L1,source_list, month = "1409"):
     load_spectra = []
@@ -343,6 +287,70 @@ def read_L1(files_L1,source_list, month = "1409"):
         print("\n\ncould not find spectra\n\n")
         return []
 
+def matchL1L2(L1_ids,L2_ids):
+    L1_ids = L1_ids.flatten()
+    mutal_ids = np.intersect1d(L1_ids,L2_ids) #for filtering all matches
+    print("mutal: ",np.shape(mutal_ids),"single: L1 ",np.shape(L1_ids), ", L2 ", np.shape(L2_ids))
+    pos = np.where(L1_ids == L2_ids[0])
+    #print (pos)
+    #np.set_printoptions(suppress=True)
+    #print(L1_ids[pos[0][0]:][:100])
+    #print(mutal_ids.astype(int)[:100])
+    #print(L2_ids[:100])
+
+    mask_equal_L1 = np.isin(L1_ids,L2_ids)
+    mask_equal_L2 = np.isin(L2_ids,L1_ids)
+    #print(L1_ids[mask_equal_L1][:100])
+    #print(np.shape(mask_equal_L1),np.shape(mask_equal_L2),np.shape(L1_ids),np.shape(L2_ids))
+    #print(np.sum(np.abs(L1_ids[mask_equal_L1]-L2_ids)))
+    print("0 check: ",np.sum(np.abs(L1_ids[mask_equal_L1]-L2_ids[mask_equal_L2])))
+    print("unused L2 values: ",np.sum(mask_equal_L2 == False))
+    assert np.sum(np.abs(L1_ids[mask_equal_L1]-L2_ids[mask_equal_L2]))<0.1
+    if np.abs(np.sum(mask_equal_L2 == False))>0.1:
+        print("\n\n WARNING! Not all L2 values were matched")
+    return mask_equal_L1, mask_equal_L2
+
+def saveElems(array_list,mask_equal, name = "L1"):
+    """Saved the results
+    
+    Arguments:
+        array_list {[type]} -- [description]
+        mask_equal {[type]} -- [description]
+    
+    Keyword Arguments:
+        name {str} -- [description] (default: {"L1"})
+    
+    Returns:
+        [type] -- [description]
+    """
+    saveFolder = Path(__file__).parent.joinpath("npy")
+
+    #sort out L1 elems and get big array
+    elems = np.array([])
+    elem_list = list(zip(*array_list))
+    for i in range(len(array_list[0])):
+        elem = elem_list[i]
+        #for e in L1_elem:
+        #        print(i,np.shape(e))
+        elem = np.concatenate(elem,axis=0)
+        #print("1 elem ",np.shape(L1_elem))
+        elem=elem[mask_equal]
+        #print("1 elem masked",np.shape(L1_elem))
+        #print("all elems ",np.shape(L1_elems))
+        #print("elem1",np.shape(elem))
+        if elem.ndim < 2:
+                elem = elem [:,None]
+        #print("elem2",np.shape(elem))
+        elems= np.concatenate([elems, elem],axis=1) if elems.size else elem #np.vstack
+        #L1_elems.append()
+
+    elemsPath = f"{name}_elems.npy"
+    print(f"{name}_elems shape {np.shape(elems)},saved to {elemsPath}")
+    np.save(saveFolder.joinpath(elemsPath),elems)
+    return elems
+
+
+
 def load_and_match(file_L2,month,filenumber):
     """Matches all L1 files belonging to a L2 file. Results are saved and named after 
     
@@ -374,7 +382,11 @@ def load_and_match(file_L2,month,filenumber):
     else:
         print(f"\n\n\n No Spectrum for day {month}{filenumber:02d}")
 
-#select files to load
+
+#file where all the L2 filenames are stored
+filePath_L2 = Path(__file__).parent.joinpath(f"L2_9000/L2list.txt")
+
+#select months to extract
 month_L2 = [1409,1607]
 month_L2 = [1409,1410,1411,1412]
 month_L2 = [1501,1502,1503,1504,1505,1506,1507,1508,1509,1510,1511,1512]
@@ -390,8 +402,7 @@ for month in month_L2:
     print("\n Starts month ",month)
     t_month = time.perf_counter()
     #gets all lists in month file and uses first one
-    filePath_glob_L1 = Path(__file__).parent.joinpath(f"L1/{month}/").glob("subset_OCO2_L1B_Science_*")#1409/subset_OCO2_L1B_Science_V8r_20190307_131740.txt"
-    #globlist = list(filePath_glob_L1)
+    filePath_glob_L1 = Path(__file__).parent.joinpath(f"L1/{month}/").glob("subset_OCO2_L1B_Science_*")
     filePath_L1 = list(filePath_glob_L1)[0]
     print("Reads L1 files from file",filePath_L1)
     files_L1, fileList_L1 = getLoadingList(filePath_L1)
@@ -403,44 +414,53 @@ for month in month_L2:
     print("L2 files relevant for month",monthList)
     print(f"Will read {len(monthList)} days")
     #Matches the L1 files for each day of the month. Results are saved in files named after month and day
-    for i in range(len(monthList)):#len(monthList)-1,
+    for i in range(len(monthList)):
         t_day = time.perf_counter()
         load_and_match(monthList[i],month,i)
         print(f"Time process day: {time.perf_counter() - t_day:.2f}s")
     print(f"Time process month: {time.perf_counter() - t_month:.2f}s")
 
-def dict_list(L1_elems,L2_elems):
-    all_elems = np.concatenate([L2_elems, L1_elems],axis=1)
-    print(np.shape(all_elems))
-    spec_length= 1016
-    namedict = {
-        "L2_id":0,
-        "xco2":1,
-        "albedo_o2":2,
-        "albedo_sco2":3,
-        "albedo_wco2":4,
-        "tcwv":5,
-        "aod_bc":6,
-        "aod_dust":7,
-        "aod_ice":8,
-        "aod_oc":9,
-        "aod_seasalt":10,
-        "aod_sulfate":11,
-        "aod_total":12,
-        "aod_water":13,
-        "t700":14,
-        "psurf":15,
-        "windspeed":16,
-        "sza":17,
-        "latitude":18,
-        "longitude":19,
-        "year":20,
-        "month":21,
-        "day":22,
-        "L1_id":23,
-        "sza":24,
-        "flag":25,
-        "sco2":list(range(26,26+spec_length)),
-        "wco2":list(range(26+spec_length,26+spec_length*2)),
-        "o2":list(range(26+spec_length*2,26+spec_length*3)),
-    }
+
+
+#Unused. Shows order of the parameter
+namedict = {
+    "L2_id":0,
+    "xco2":1,
+    "albedo_o2":2,
+    "albedo_sco2":3,
+    "albedo_wco2":4,
+    "tcwv":5,
+    "aod_bc":6,
+    "aod_dust":7,
+    "aod_ice":8,
+    "aod_oc":9,
+    "aod_seasalt":10,
+    "aod_sulfate":11,
+    "aod_total":12,
+    "aod_water":13,
+    "t700":14,
+    "psurf":15,
+    "windspeed":16,
+    "sza":17,
+    "latitude":18,
+    "longitude":19,
+    "year":20,
+    "month":21,
+    "day":22,
+    "sensor_zenith_angle":23,
+    "snr_wco2":24,
+    "snr_sco2":25,
+    "snr_o2a":26,
+    "glint_angle":27,
+    "altitude":28,
+    "tcwv_apriori":29,
+    "tcwv_uncertainty":30,
+    "xco2_apriori":31,
+    "xco2_uncertainty":32,
+    "xco2_raw":33,
+    "xco2_averaging_kernel":list(range(34,34+kernel_length)),
+    "L1_id":34+kernel_length,
+    "sco2":list(range(spec_start,spec_start+spec_length)),
+    "wco2":list(range(spec_start+spec_length,spec_start+spec_length*2)),
+    "o2":list(range(spec_start+spec_length*2,spec_start+spec_length*3)),
+}
